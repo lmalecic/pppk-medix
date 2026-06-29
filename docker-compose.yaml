@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    profiles:
+      - app
+    stdin_open: true
+    tty: true
+    environment:
+      PGHOST: db
+      PGPORT: 5432
+      PGDATABASE: lua_orm
+      PGUSER: lua_orm
+      PGPASSWORD: lua_orm
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: lua_orm
+      POSTGRES_USER: lua_orm
+      POSTGRES_PASSWORD: lua_orm
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
