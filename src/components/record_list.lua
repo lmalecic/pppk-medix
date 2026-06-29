@@ -53,7 +53,6 @@ function RecordList.view(model, buf, schema, visible)
 						buf:write('> ')
 					else
 						buf:set_fg('#6f7f96')
-						buf:write('  ')
 					end
 					buf:set_fg(nil)
 					buf:set_attr(nil)

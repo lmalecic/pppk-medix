@@ -3,7 +3,27 @@ local Fieldset = require 'components.fieldset'
 
 local DetailPanel = {}
 
-function DetailPanel.view(model, buf, schema, current)
+local function draw_actions(model, buf, actions)
+	for i, action in ipairs(actions) do
+		if model.focus == 'detail' and model.action_index == i then
+			buf:set_fg('#f5d76e')
+			buf:set_attr('bold')
+			buf:write('> ')
+		else
+			buf:set_fg('#6f7f96')
+		end
+		buf:set_fg(nil)
+		buf:set_attr(nil)
+		buf:write(action)
+		if i < #actions then buf:write('\n') end
+	end
+	buf:write('\n\n')
+	buf:set_fg('#6f7f96')
+	buf:write(model.focus == 'detail' and '↑/↓ odabir, ENTER potvrda, ESC natrag' or 'ENTER za odabir akcije')
+	buf:set_fg(nil)
+end
+
+function DetailPanel.view(model, buf, schema, current, actions)
 	local title = schema.title
 	if current then title = title .. ' #' .. current.row.id end
 	Fieldset.title(model.detail_fieldset, title)
@@ -21,7 +41,7 @@ function DetailPanel.view(model, buf, schema, current)
 			end
 			buf:write('\n')
 			if schema.mutable then
-				Style.write_line(buf, 'Akcije ce biti dostupne kroz gumbe.', '#8aa2c1', nil)
+				draw_actions(model, buf, actions)
 			else
 				Style.write_line(buf, 'Read-only: lijecnici se definiraju pri prvom pokretanju.', '#c9a66b', nil)
 			end
