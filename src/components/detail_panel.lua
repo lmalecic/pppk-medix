@@ -5,7 +5,7 @@ local Store = require 'store'
 local DetailPanel = {}
 
 local function is_editing(model)
-	return model.details and model.details.mode == 'edit'
+	return model.details and (model.details.mode == 'edit' or model.details.mode == 'create')
 end
 
 local function is_actions(model)
@@ -28,7 +28,7 @@ local function draw_actions(model, buf, actions)
 	end
 	buf:write('\n\n')
 	buf:set_fg('#6f7f96')
-	buf:write(is_actions(model) and 'Up/Down odabir, ENTER potvrda, ESC natrag' or 'ENTER za odabir akcije')
+	buf:write(is_actions(model) and '↑/↓ select, ENTER confirm, ESC back' or 'ENTER for action selection')
 	buf:set_fg(nil)
 end
 
@@ -54,7 +54,7 @@ local function draw_fields(model, buf, schema, current)
 
 		if relation and selected then
 			buf:set_fg('#6f7f96')
-			buf:write('  ENTER odabir')
+			buf:write('  ENTER select')
 			buf:set_fg(nil)
 		end
 
@@ -73,15 +73,16 @@ local function draw_edit_actions(model, buf, schema, actions)
 	end
 end
 
-function DetailPanel.view(model, buf, schema, current, actions, edit_actions)
+function DetailPanel.view(model, buf, schema, current, actions, edit_actions, create_actions)
 	local title = schema.title
+	if model.details and model.details.mode == 'create' then title = 'New record' end
 	if current then title = title .. ' #' .. current.row.id end
 	Fieldset.title(model.detail_fieldset, title)
 
 	buf:with_offset(model.detail_pos[1], model.detail_pos[2], function()
 		Fieldset.draw(model.detail_fieldset, buf, model.detail_layout, function()
-			if not current then
-				Style.write_line(buf, 'Odaberi ili dodaj zapis.', '#8aa2c1', nil)
+			if not current and not (model.details and model.details.mode == 'create') then
+				Style.write_line(buf, 'Create a new record.', '#8aa2c1', nil)
 				return
 			end
 
@@ -89,10 +90,11 @@ function DetailPanel.view(model, buf, schema, current, actions, edit_actions)
 				if is_editing(model) then
 					draw_fields(model, buf, schema, current)
 					buf:write('\n\n')
-					draw_edit_actions(model, buf, schema, edit_actions)
+					draw_edit_actions(model, buf, schema,
+						model.details.mode == 'create' and create_actions or edit_actions)
 					buf:write('\n\n')
 					buf:set_fg('#6f7f96')
-					buf:write('Up/Down odabir, Enter izmjena, Esc odustani')
+					buf:write('↑/↓ select, ENTER change, ESC cancel')
 					buf:set_fg(nil)
 				else
 					draw_fields(model, buf, schema, current)
@@ -102,7 +104,7 @@ function DetailPanel.view(model, buf, schema, current, actions, edit_actions)
 			else
 				draw_fields(model, buf, schema, current)
 				buf:write('\n')
-				Style.write_line(buf, 'Read-only: lijecnici se definiraju pri inicijalizaciji.', '#c9a66b', nil)
+				Style.write_line(buf, 'Read-only: doctors are defined on initialization.', '#c9a66b', nil)
 			end
 		end)
 	end)

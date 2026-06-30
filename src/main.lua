@@ -13,8 +13,9 @@ local DetailPanel = require 'components.detail_panel'
 local RelationModal = require 'components.relation_modal'
 local InputDialog = require 'components.input_dialog'
 
-local ACTIONS = { 'Add', 'Edit', 'Delete' }
+local ACTIONS = { 'Edit', 'Delete' }
 local EDIT_ACTIONS = { 'Save', 'Cancel' }
+local CREATE_ACTIONS = { 'Create', 'Cancel' }
 
 local function sync_legacy_state(model)
 	model.selected = model.results.selected
@@ -36,8 +37,15 @@ end
 
 local clear_edit_state
 
+local function details_is_editing(model)
+	return model.details.mode == 'edit' or model.details.mode == 'create'
+end
+
 local function clamp_selection(model)
-	local count = #Store.filtered_rows(model)
+	local schema = Store.selected_schema(model)
+	local visible_count = #Store.filtered_rows(model)
+	local count = schema.mutable and (visible_count + 1) or visible_count
+
 	if count == 0 then
 		model.results.selected = 1
 	elseif model.results.selected < 1 then
@@ -64,14 +72,20 @@ end
 
 local function current_item(model)
 	local visible = Store.filtered_rows(model)
-	return visible[model.results.selected], visible
+	local schema = Store.selected_schema(model)
+	if schema.mutable and model.results.selected == 1 then
+		return nil, visible
+	end
+
+	local offset = schema.mutable and 1 or 0
+	return visible[model.results.selected - offset], visible
 end
 
 local function select_row_by_id(model, row_id)
 	local visible = Store.filtered_rows(model)
 	for i, item in ipairs(visible) do
 		if tostring(item.row.id) == tostring(row_id) then
-			model.results.selected = i
+			model.results.selected = i + (Store.selected_schema(model).mutable and 1 or 0)
 			sync_legacy_state(model)
 			return true
 		end
@@ -117,6 +131,14 @@ local function copy_row_fields(schema, row)
 	return draft
 end
 
+local function copy_defaults(schema)
+	local draft = {}
+	for _, field in ipairs(schema.fields) do
+		draft[field] = schema.defaults[field]
+	end
+	return draft
+end
+
 local function enter_list(model, batch)
 	model.focus = 'results'
 	model.details.mode = 'view'
@@ -138,6 +160,15 @@ local function enter_field_edit(model, schema, row, batch)
 	model.details.mode = 'edit'
 	model.details.edit_index = 1
 	model.details.draft = copy_row_fields(schema, row)
+	sync_legacy_state(model)
+	set_input_mode(model, batch, nil)
+end
+
+local function enter_create(model, schema, batch)
+	model.focus = 'details'
+	model.details.mode = 'create'
+	model.details.edit_index = 1
+	model.details.draft = copy_defaults(schema)
 	sync_legacy_state(model)
 	set_input_mode(model, batch, nil)
 end
@@ -171,7 +202,7 @@ local function open_relation_modal(model, schema, batch)
 	model.modal.relation_selected = 1
 	model.modal.relation_current_id = model.details.draft[field]
 	model.relation_search_input.text = ''
-	model.relation_search_input.placeholder = 'Pretrazi ' .. target_schema.title:lower() .. '...'
+	model.relation_search_input.placeholder = 'Search ' .. target_schema.title:lower() .. '...'
 	Window.title(model.relation_window, target_schema.title)
 	set_input_mode(model, batch, 'relation')
 	clamp_relation_selection(model)
@@ -223,20 +254,34 @@ local function save_edit(model, schema, batch)
 	enter_list(model, batch)
 end
 
+local function create_draft(model, schema, batch)
+	if not model.details.draft then return end
+
+	local row = Store.create_row(schema, model.details.draft)
+	if model.results.filter ~= '' then
+		model.results.filter = ''
+		batch.push(model.search_input.msg.clear)
+	end
+	select_row_by_id(model, row.id)
+	model.message = 'Dodano: ' .. schema.summary(row)
+	enter_list(model, batch)
+end
+
 local function cancel_edit(model, batch)
 	model.message = 'Promjene su odbacene.'
 	enter_list(model, batch)
 end
 
-local function edit_item_count(schema)
-	return #schema.fields + #EDIT_ACTIONS
+local function edit_item_count(model, schema)
+	local actions = model.details.mode == 'create' and CREATE_ACTIONS or EDIT_ACTIONS
+	return #schema.fields + #actions
 end
 
 local function clamp_edit_index(model, schema)
 	if model.details.edit_index < 1 then
 		model.details.edit_index = 1
-	elseif model.details.edit_index > edit_item_count(schema) then
-		model.details.edit_index = edit_item_count(schema)
+	elseif model.details.edit_index > edit_item_count(model, schema) then
+		model.details.edit_index = edit_item_count(model, schema)
 	end
 	sync_legacy_state(model)
 end
@@ -244,12 +289,15 @@ end
 local function selected_edit_action(schema, model)
 	local action_index = model.details.edit_index - #schema.fields
 	if action_index < 1 then return nil end
-	return EDIT_ACTIONS[action_index]
+	local actions = model.details.mode == 'create' and CREATE_ACTIONS or EDIT_ACTIONS
+	return actions[action_index]
 end
 
 local function activate_edit_selection(model, schema, batch)
 	local action = selected_edit_action(schema, model)
-	if action == 'Save' then
+	if action == 'Create' then
+		create_draft(model, schema, batch)
+	elseif action == 'Save' then
 		save_edit(model, schema, batch)
 	elseif action == 'Cancel' then
 		cancel_edit(model, batch)
@@ -270,16 +318,7 @@ local function perform_action(model, schema, batch)
 	local rows = Store.db[schema.key]
 	local action = ACTIONS[model.details.action_index]
 
-	if action == 'Add' then
-		local row = Store.create_row(schema, {})
-		if model.results.filter ~= '' then
-			model.results.filter = ''
-			batch.push(model.search_input.msg.clear)
-		end
-		model.results.selected = #rows
-		sync_legacy_state(model)
-		model.message = 'Dodano: ' .. schema.summary(row)
-	elseif action == 'Edit' then
+	if action == 'Edit' then
 		if not item then return end
 		model.details.edit_source_index = item.index
 		enter_field_edit(model, schema, item.row, batch)
@@ -341,7 +380,7 @@ end
 
 local function create_model(batch)
 	local search_input = LineInput.init()
-	search_input.placeholder = 'Ime, OIB, lijek, termin...'
+	search_input.placeholder = 'Name, OIB, Medication, Appointment...'
 	batch.push(search_input.msg.enable)
 
 	local value_input = LineInput.init()
@@ -379,11 +418,11 @@ local function create_model(batch)
 		relation_filter = '',
 		relation_selected = 1,
 		relation_current_id = nil,
-		message = 'Medicinski sustav koristi mock podatke; ORM i baza dolaze kasnije.',
+		message = '',
 		search_input = search_input,
 		value_input = value_input,
 		relation_search_input = relation_search_input,
-		header_fieldset = Fieldset.init('Medicinski sustav v0.1'),
+		header_fieldset = Fieldset.init('MediX v0.1'),
 		search_fieldset = Fieldset.init('Search'),
 		list_fieldset = Fieldset.init('Results'),
 		detail_fieldset = Fieldset.init(''),
@@ -427,7 +466,7 @@ App {
 		elseif pressed_any(msg, { 'esc', 'escape' }) then
 			if model.focus == 'modal' then
 				return_to_field_edit(model, batch)
-			elseif model.focus == 'details' and model.details.mode == 'edit' then
+			elseif model.focus == 'details' and details_is_editing(model) then
 				cancel_edit(model, batch)
 			else
 				enter_list(model, batch)
@@ -447,13 +486,13 @@ App {
 				model.message = 'Odabrano: ' .. selected.label
 				return_to_field_edit(model, batch)
 			end
-		elseif (input.pressed(msg, 'up') or input.pressed(msg, 'k')) and model.focus == 'details' and model.details.mode == 'edit' then
+		elseif (input.pressed(msg, 'up') or input.pressed(msg, 'k')) and model.focus == 'details' and details_is_editing(model) then
 			model.details.edit_index = model.details.edit_index - 1
 			clamp_edit_index(model, schema)
-		elseif (input.pressed(msg, 'down') or input.pressed(msg, 'j')) and model.focus == 'details' and model.details.mode == 'edit' then
+		elseif (input.pressed(msg, 'down') or input.pressed(msg, 'j')) and model.focus == 'details' and details_is_editing(model) then
 			model.details.edit_index = model.details.edit_index + 1
 			clamp_edit_index(model, schema)
-		elseif pressed_any(msg, { 'enter', 'return' }) and model.focus == 'details' and model.details.mode == 'edit' then
+		elseif pressed_any(msg, { 'enter', 'return' }) and model.focus == 'details' and details_is_editing(model) then
 			activate_edit_selection(model, schema, batch)
 		elseif pressed_any(msg, { 'enter', 'return' }) and model.focus == 'modal' and model.modal.type == 'value' then
 			confirm_value_dialog(model, batch)
@@ -468,7 +507,9 @@ App {
 		elseif pressed_any(msg, { 'enter', 'return' }) and model.focus == 'details' and model.details.mode == 'actions' then
 			perform_action(model, schema, batch)
 		elseif pressed_any(msg, { 'enter', 'return' }) then
-			if item and schema.mutable then
+			if schema.mutable and model.results.selected == 1 then
+				enter_create(model, schema, batch)
+			elseif item and schema.mutable then
 				enter_detail(model, batch)
 			end
 		elseif input.pressed(msg, 'left') and model.focus == 'results' then
@@ -505,12 +546,12 @@ App {
 
 		local schema = Store.selected_schema(model)
 		local visible = Store.filtered_rows(model)
-		local current = visible[model.selected]
+		local current = current_item(model)
 
 		Header.view(model, buf, schema, Store.db, Store.schemas)
 		SearchBox.view(model, buf)
 		RecordList.view(model, buf, schema, visible)
-		DetailPanel.view(model, buf, schema, current, ACTIONS, EDIT_ACTIONS)
+		DetailPanel.view(model, buf, schema, current, ACTIONS, EDIT_ACTIONS, CREATE_ACTIONS)
 		RelationModal.view(model, buf, relation_rows(model))
 		InputDialog.view(model, buf)
 	end

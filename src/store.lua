@@ -61,7 +61,7 @@ Store.schemas = {
 	{
 		key = 'patients',
 		shortcut = 'p',
-		title = 'Pacijenti',
+		title = 'Patients',
 		mutable = true,
 		fields = { 'ime', 'prezime', 'oib', 'datum_rodjenja', 'spol', 'boraviste', 'prebivaliste' },
 		defaults = {
@@ -87,7 +87,7 @@ Store.schemas = {
 	{
 		key = 'histories',
 		shortcut = 'b',
-		title = 'Povijest bolesti',
+		title = 'Medical History',
 		mutable = true,
 		fields = { 'pacijent_id', 'stanje', 'od', 'do_datuma', 'lijecnik_id' },
 		defaults = { pacijent_id = '1', stanje = 'Novo stanje', od = '2026-06-29', do_datuma = 'trenutno', lijecnik_id = '1' },
@@ -101,7 +101,7 @@ Store.schemas = {
 	{
 		key = 'medications',
 		shortcut = 'l',
-		title = 'Lijekovi',
+		title = 'Medications',
 		mutable = true,
 		fields = { 'pacijent_id', 'stanje', 'lijek', 'doza', 'ucestalost', 'lijecnik_id' },
 		defaults = { pacijent_id = '1', stanje = 'Stanje', lijek = 'Lijek', doza = '1 tableta', ucestalost = '1x dnevno', lijecnik_id = '1' },
@@ -115,7 +115,7 @@ Store.schemas = {
 	{
 		key = 'appointments',
 		shortcut = 't',
-		title = 'Specijalisticki pregledi',
+		title = 'Appointments',
 		mutable = true,
 		fields = { 'pacijent_id', 'tip', 'termin', 'specijalist_id', 'status' },
 		defaults = { pacijent_id = '1', tip = 'CT', termin = '2026-07-01 10:00', specijalist_id = '2', status = 'zakazano' },
@@ -129,7 +129,7 @@ Store.schemas = {
 	{
 		key = 'doctors',
 		shortcut = 'd',
-		title = 'Lijecnici',
+		title = 'Doctors',
 		mutable = false,
 		fields = { 'ime', 'prezime', 'specijalizacija' },
 		defaults = {},
