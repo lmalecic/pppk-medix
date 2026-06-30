@@ -24,7 +24,7 @@ local function write_highlighted(buf, text, query)
 			buf:write(text:sub(pos, start_pos - 1))
 		end
 
-		buf:set_fg('#f5d76e')
+		buf:set_fg('#c08080')
 		buf:set_attr('bold')
 		buf:write(text:sub(start_pos, end_pos))
 		buf:set_attr(nil)

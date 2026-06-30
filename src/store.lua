@@ -150,6 +150,27 @@ for i, schema in ipairs(Store.schemas) do
 	Store.schema_by_shortcut[schema.shortcut] = schema
 end
 
+Store.relations = {
+	pacijent_id = {
+		schema_key = 'patients',
+		label = function(row)
+			return row.ime .. ' ' .. row.prezime .. ' | OIB ' .. row.oib
+		end,
+	},
+	lijecnik_id = {
+		schema_key = 'doctors',
+		label = function(row)
+			return row.ime .. ' ' .. row.prezime .. ' | ' .. row.specijalizacija
+		end,
+	},
+	specijalist_id = {
+		schema_key = 'doctors',
+		label = function(row)
+			return row.ime .. ' ' .. row.prezime .. ' | ' .. row.specijalizacija
+		end,
+	},
+}
+
 function Store.selected_schema(model)
 	return Store.schemas[model.entity]
 end
@@ -202,6 +223,28 @@ function Store.update_row(schema, row, assignments)
 		end
 	end
 	return changed
+end
+
+function Store.relation_for(field)
+	return Store.relations[field]
+end
+
+function Store.related_rows(field, query)
+	local relation = Store.relation_for(field)
+	if not relation then return {} end
+
+	local rows = Store.db[relation.schema_key]
+	local q = (query or ''):lower()
+	local results = {}
+
+	for _, row in ipairs(rows) do
+		local label = relation.label(row)
+		if q == '' or label:lower():find(q, 1, true) then
+			table.insert(results, { row = row, label = label })
+		end
+	end
+
+	return results
 end
 
 return Store

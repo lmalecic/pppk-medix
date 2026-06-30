@@ -16,6 +16,7 @@ function Fieldset.init(title)
 	return {
 		title = title,
 		box = box,
+		clear = false,
 	}
 end
 

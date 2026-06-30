@@ -1,11 +1,20 @@
 local Style = require 'components.style'
 local Fieldset = require 'components.fieldset'
+local Store = require 'store'
 
 local DetailPanel = {}
 
+local function is_editing(model)
+	return model.details and model.details.mode == 'edit'
+end
+
+local function is_actions(model)
+	return model.focus == 'details' and model.details and model.details.mode == 'actions'
+end
+
 local function draw_actions(model, buf, actions)
 	for i, action in ipairs(actions) do
-		if model.focus == 'detail' and model.action_index == i then
+		if is_actions(model) and model.action_index == i then
 			buf:set_fg('#f5d76e')
 			buf:set_attr('bold')
 			buf:write('> ')
@@ -19,11 +28,52 @@ local function draw_actions(model, buf, actions)
 	end
 	buf:write('\n\n')
 	buf:set_fg('#6f7f96')
-	buf:write(model.focus == 'detail' and '↑/↓ odabir, ENTER potvrda, ESC natrag' or 'ENTER za odabir akcije')
+	buf:write(is_actions(model) and 'Up/Down odabir, ENTER potvrda, ESC natrag' or 'ENTER za odabir akcije')
 	buf:set_fg(nil)
 end
 
-function DetailPanel.view(model, buf, schema, current, actions)
+local function draw_selector_prefix(buf, selected)
+	if selected then
+		buf:set_fg('#f5d76e')
+		buf:set_attr('bold')
+		buf:write('> ')
+		buf:set_attr(nil)
+		buf:set_fg(nil)
+	end
+end
+
+local function draw_fields(model, buf, schema, current)
+	for i, field in ipairs(schema.fields) do
+		local selected = is_editing(model) and model.edit_index == i
+		local relation = Store.relation_for(field)
+		local row = is_editing(model) and model.edit_draft or current.row
+
+		draw_selector_prefix(buf, selected)
+		Style.draw_kv(buf, field, '')
+		buf:write(tostring(row[field] or ''))
+
+		if relation and selected then
+			buf:set_fg('#6f7f96')
+			buf:write('  ENTER odabir')
+			buf:set_fg(nil)
+		end
+
+		if i < #schema.fields then buf:write('\n') end
+	end
+end
+
+local function draw_edit_actions(model, buf, schema, actions)
+	for i, action in ipairs(actions) do
+		local index = #schema.fields + i
+		local selected = is_editing(model) and model.edit_index == index
+
+		draw_selector_prefix(buf, selected)
+		buf:write(action)
+		if i < #actions then buf:write('\n') end
+	end
+end
+
+function DetailPanel.view(model, buf, schema, current, actions, edit_actions)
 	local title = schema.title
 	if current then title = title .. ' #' .. current.row.id end
 	Fieldset.title(model.detail_fieldset, title)
@@ -35,15 +85,24 @@ function DetailPanel.view(model, buf, schema, current, actions)
 				return
 			end
 
-			for _, field in ipairs(schema.fields) do
-				Style.draw_kv(buf, field, current.row[field])
-				buf:write('\n')
-			end
-			buf:write('\n')
 			if schema.mutable then
-				draw_actions(model, buf, actions)
+				if is_editing(model) then
+					draw_fields(model, buf, schema, current)
+					buf:write('\n\n')
+					draw_edit_actions(model, buf, schema, edit_actions)
+					buf:write('\n\n')
+					buf:set_fg('#6f7f96')
+					buf:write('Up/Down odabir, Enter izmjena, Esc odustani')
+					buf:set_fg(nil)
+				else
+					draw_fields(model, buf, schema, current)
+					buf:write('\n\n')
+					draw_actions(model, buf, actions)
+				end
 			else
-				Style.write_line(buf, 'Read-only: lijecnici se definiraju pri prvom pokretanju.', '#c9a66b', nil)
+				draw_fields(model, buf, schema, current)
+				buf:write('\n')
+				Style.write_line(buf, 'Read-only: lijecnici se definiraju pri inicijalizaciji.', '#c9a66b', nil)
 			end
 		end)
 	end)
