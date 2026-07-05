@@ -1,5 +1,5 @@
 package = "medix"
-version = "1.0"
+version = "dev-1"
 
 source = {
   url = "https://github.com/lmalecic/pppk-medix"
