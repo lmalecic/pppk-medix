@@ -8,9 +8,9 @@ services:
     environment:
       PGHOST: db
       PGPORT: 5432
-      PGDATABASE: lua_orm
-      PGUSER: lua_orm
-      PGPASSWORD: lua_orm
+      PGDATABASE: medix
+      PGUSER: medix
+      PGPASSWORD: medix
     volumes:
       - ./src:/app/src
     depends_on:
@@ -19,9 +19,9 @@ services:
   db:
     image: postgres:latest
     environment:
-      POSTGRES_DB: lua_orm
-      POSTGRES_USER: lua_orm
-      POSTGRES_PASSWORD: lua_orm
+      POSTGRES_DB: medix
+      POSTGRES_USER: medix
+      POSTGRES_PASSWORD: medix
     ports:
       - "5432:5432"
     volumes:

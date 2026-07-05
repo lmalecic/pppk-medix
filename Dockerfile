@@ -26,8 +26,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY lua-orm-dev-1.rockspec ./
-RUN luarocks make --only-deps lua-orm-dev-1.rockspec
+COPY medix.rockspec ./
+RUN luarocks make --only-deps medix.rockspec
 
 RUN mkdir -p /app/dist
 

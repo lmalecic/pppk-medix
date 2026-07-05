@@ -1,12 +1,12 @@
-package = "lua-orm"
-version = "dev-1"
+package = "medix"
+version = "1.0"
 
 source = {
-  url = "git://example.com/lua-orm"
+  url = "https://github.com/lmalecic/pppk-medix"
 }
 
 description = {
-  summary = "Lua ORM project",
+  summary = "Simple medical system in TUI with CRUD operations",
   license = "MIT"
 }
 
