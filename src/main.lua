@@ -1,3 +1,5 @@
+local Orm = require("lua-orm")
+
 local App = require 'mate.app'
 local Batch = require 'mate.batch'
 local LineInput = require 'mate.components.line_input'

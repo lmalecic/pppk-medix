@@ -3,7 +3,6 @@ FROM rust:1-bookworm AS mate-builder
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     liblua5.1-0-dev \
-    luarocks \
     pkg-config \
   && rm -rf /var/lib/apt/lists/*
 
@@ -19,14 +18,18 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     build-essential \
     luarocks \
-  && rm -rf /var/lib/apt/lists/*
+    libssl-dev \
+	&& rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+COPY lua-orm ./lua-orm
+RUN cd lua-orm && luarocks make
+
 COPY medix-dev-1.rockspec ./
 RUN luarocks make --only-deps medix-dev-1.rockspec
 
 RUN mkdir -p /app/dist
-
 COPY --from=mate-builder /tmp/mate/dist/out.lua /app/dist/out.lua
 COPY --from=mate-builder /tmp/mate/term/target/release/libterm.so /usr/local/lib/lua/5.1/term.so
 COPY src ./src

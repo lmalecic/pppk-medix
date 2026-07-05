@@ -2,7 +2,7 @@ package = "medix"
 version = "dev-1"
 
 source = {
-  url = "https://github.com/lmalecic/pppk-medix"
+  url = "local"
 }
 
 description = {
@@ -12,11 +12,12 @@ description = {
 
 dependencies = {
   "lua >= 5.1",
-  "pgmoon",
-  "luasocket",
-  "luabitop"
+  "lua-orm",
 }
 
 build = {
-  type = "none"
+  type = "builtin",
+  modules = {
+  	["medix"] = "src/entrypoint.lua",
+  }
 }
