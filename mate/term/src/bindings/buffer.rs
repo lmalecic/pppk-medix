@@ -6,6 +6,7 @@ use crossterm::{
         SetForegroundColor,
     },
 };
+use ljr::UnwrapDisplay;
 use ljr::{prelude::*, value::Kind};
 use std::io::Write;
 use unicode_segmentation::UnicodeSegmentation;

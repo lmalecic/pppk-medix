@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-ljr = { git = "https://github.com/carabalonepaulo/ljr", branch = "main", default-features = false }
+ljr = { git = "https://github.com/lmalecic/ljr", branch = "main", default-features = false }
 crossterm = "0.29.0"
 thiserror = "2.0.17"
 unicode-width = "0.2.2"
