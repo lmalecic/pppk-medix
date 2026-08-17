@@ -1,3 +1,0 @@
-[submodule "lua-orm"]
-	path = lua-orm
-	url = https://github.com/lmalecic/lua-orm.git
