@@ -26,9 +26,6 @@ WORKDIR /app
 COPY lua-orm ./lua-orm
 RUN cd lua-orm && luarocks make
 
-COPY medix-dev-1.rockspec ./
-RUN luarocks make --only-deps medix-dev-1.rockspec
-
 RUN mkdir -p /app/dist
 COPY --from=mate-builder /tmp/mate/dist/out.lua /app/dist/out.lua
 COPY --from=mate-builder /tmp/mate/term/target/release/libterm.so /usr/local/lib/lua/5.1/term.so
