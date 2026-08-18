@@ -393,56 +393,56 @@ local function layout(model, w, h)
 end
 
 local function create_model(batch)
-	local search_input = LineInput.init()
-	search_input.placeholder = 'Name, OIB, Medication, Appointment...'
-	batch.push(search_input.msg.enable)
+    local search_input = LineInput.init()
+    search_input.placeholder = 'Name, OIB, Medication, Appointment...'
+    batch.push(search_input.msg.enable)
 
-	local value_input = LineInput.init()
-	local relation_search_input = LineInput.init()
+    local value_input = LineInput.init()
+    local relation_search_input = LineInput.init()
 
-	return {
-		ready = false,
-		size = { 0, 0 },
-		entity = 1,
-		focus = 'results',
-		results = {
-			selected = 1,
-			filter = '',
-		},
-		details = {
-			mode = 'view',
-			action_index = 1,
-			edit_index = 1,
-			draft = nil,
-			edit_source_index = nil,
-		},
-		modal = {
-			type = nil,
-			value_field = nil,
-			relation_field = nil,
-			relation_filter = '',
-			relation_selected = 1,
-			relation_current_id = nil,
-		},
-		selected = 1,
-		action_index = 1,
-		edit_index = 1,
-		filter = '',
-		edit_draft = nil,
-		relation_filter = '',
-		relation_selected = 1,
-		relation_current_id = nil,
-		message = '',
-		search_input = search_input,
-		value_input = value_input,
-		relation_search_input = relation_search_input,
-		header_fieldset = Fieldset.init('MediX v0.1'),
-		search_fieldset = Fieldset.init('Search'),
-		list_fieldset = Fieldset.init('Results'),
-		detail_fieldset = Fieldset.init(''),
-		relation_window = Window.init(''),
-		value_window = Window.init('Input value'),
-	}
+    return {
+        ready = false,
+        size = { 0, 0 },
+        entity = 1,
+        focus = 'results',
+        results = {
+            selected = 1,
+            filter = '',
+        },
+        details = {
+            mode = 'view',
+            action_index = 1,
+            edit_index = 1,
+            draft = nil,
+            edit_source_index = nil,
+        },
+        modal = {
+            type = nil,
+            value_field = nil,
+            relation_field = nil,
+            relation_filter = '',
+            relation_selected = 1,
+            relation_current_id = nil,
+        },
+        selected = 1,
+        action_index = 1,
+        edit_index = 1,
+        filter = '',
+        edit_draft = nil,
+        relation_filter = '',
+        relation_selected = 1,
+        relation_current_id = nil,
+        message = '',
+        search_input = search_input,
+        value_input = value_input,
+        relation_search_input = relation_search_input,
+        header_fieldset = Fieldset.init('MediX v0.1'),
+        search_fieldset = Fieldset.init('Search'),
+        list_fieldset = Fieldset.init('Results'),
+        detail_fieldset = Fieldset.init(''),
+        relation_window = Window.init(''),
+        value_window = Window.init('Input value'),
+    }
 end
 
 App {

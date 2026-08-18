@@ -43,7 +43,7 @@ return {
 	["patientHistories"] = Model("patientHistories", {
 		{ "id", Types.Int, Constraint.PrimaryKey, Constraint.AutoIncrement(Constraint.IdentityMode.ALWAYS), Constraint.NotNull },
 		{ "diagnosis", Types.Text },
-		{ "fromDate", Types.Timestamp, Constraint.NotNull },
+		{ "fromDate", Types.Timestamp, Constraint.NotNull, Constraint.Default(CurrentTimestamp()) },
 		{ "toDate", Types.Timestamp },
 		{ "doctor_id", Types.Int, Constraint.ForeignKey("doctors", "id"), Constraint.NotNull },
 		{ "patient_id", Types.Int, Constraint.ForeignKey("patients", "id"), Constraint.NotNull }
@@ -56,7 +56,7 @@ return {
 		{ "oib", Types.Char(11), Constraint.Unique, Constraint.NotNull },
 		{ "dateOfBirth", Types.Timestamp, Constraint.NotNull },
 		{ "sex", Types.Char(), Constraint.NotNull },
-		{ "permamentAddress", Types.Text, Constraint.NotNull },
+		{ "permanentAddress", Types.Text, Constraint.NotNull },
 		{ "secondaryAddress", Types.Text, Constraint.NotNull }
 	}),
 

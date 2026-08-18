@@ -2,6 +2,7 @@ local Model = require("orm.model")
 local Types = require("orm.model.types")
 local Constraint = require("orm.model.constraint")
 local Relation = require("orm.model.relation")
+local DateTime = require("util.date-time")
 
 local Patient = Model("patients", {
     { "id", Types.Int, Constraint.PrimaryKey, Constraint.AutoIncrement(Constraint.IdentityMode.ALWAYS) },
@@ -10,7 +11,7 @@ local Patient = Model("patients", {
     { "oib", Types.Char(11), Constraint.NotNull, Constraint.Unique },
     { "dateOfBirth", Types.Timestamp, Constraint.NotNull },
     { "sex", Types.Char(1), Constraint.NotNull },
-    { "permamentAddress", Types.Text, Constraint.NotNull },
+    { "permanentAddress", Types.Text, Constraint.NotNull },
     { "secondaryAddress", Types.Text,      Constraint.NotNull },
 
     { "patientHistory",   Relation.hasMany("patientHistories", "patient_id") },
@@ -22,5 +23,19 @@ Patient.Sex = {
     M = "M",
     F = "F",
 }
+
+--- @return string
+function Patient:getSummary()
+    return string.format("%s %s | OIB %s | %s", self.firstName, self.lastName, self.oib, DateTime.fromString(self.dateOfBirth))
+end
+
+--- @return string[]
+function Patient:getDetails()
+    return {
+        "Sex: " .. self.sex,
+        "Permanent Address: " .. self.permanentAddress,
+        "Secondary Address: " .. self.secondaryAddress,
+    }
+end
 
 return Patient
