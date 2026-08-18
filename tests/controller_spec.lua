@@ -22,10 +22,12 @@ package.preload['mate.box'] = function() return dofile('mate/src/box.lua') end
 
 local ApplicationController = require 'controllers.application_controller'
 local views = require 'views'
+local DatePicker = require 'components.date_picker'
+local DateTime = require 'util.date-time'
 
 local function repository(rows)
 	local value = { rows = rows or {}, nextId = 100 }
-	function value:list(scope) return self.rows end
+	function value:list(scope, search) self.lastSearch = search; self.listCount = (self.listCount or 0) + 1; return self.rows end
 	function value:create(fields)
 		local row = {}; for key, item in pairs(fields) do row[key] = item end
 		row.id = self.nextId; self.nextId = self.nextId + 1; table.insert(self.rows, row); return row
@@ -77,6 +79,7 @@ assert(model.overlays[1].state.lockedValues.patient_id == 1, 'patient is locked 
 application:update(model, key('enter'))
 assert(model.overlays[1].state.mode == 'create')
 assert(model.overlays[1].state.draft.patient_id == 1)
+assert(model.overlays[1].state.draftRelations.patient_id.id == 1, 'fixed patient renders as the related entity')
 application:update(model, key('esc'))
 application:update(model, key('esc'))
 assert(#model.overlays == 0, 'escape returns one overlay level')
@@ -118,5 +121,42 @@ application:update(historyModel, key('enter'))
 assert(historyModel.overlays[1].state.mode == 'picker', 'prescribe option opens the medication picker')
 application:update(historyModel, key('enter'))
 assert(historyModel.message and historyModel.message.kind == 'success', 'prescribing opens success feedback')
+application:update(historyModel, key('enter'))
+application:update(historyModel, key('enter'))
+assert(#historyModel.overlays[1].state.pickerRows == 0, 'already prescribed medications are excluded from the picker')
+
+local relationModel = application:init()
+relationModel.activeTab = 2
+application:update(relationModel, { id = 'sys:ready', data = { width = 120, height = 40 } })
+application:update(relationModel, key('down'))
+application:update(relationModel, key('enter'))
+application:update(relationModel, key('enter'))
+application:update(relationModel, key('enter'))
+for _, patient in ipairs(relationModel.tabs[2].state.modal.rows) do
+	assert(patient.id ~= 1, 'the current relation is excluded from an entity picker')
+end
+
+local picker = DatePicker.new(DateTime.new(2026, 1, 1, 0, 0, 0))
+picker.selected = 5
+picker:update(key('4')); picker:update(key('5'))
+picker:update(key('5')); picker:update(key('9'))
+assert(picker.value.minute == 45 and picker.value.second == 59, 'date picker accepts direct numeric time input')
+
+local searchModel = application:init()
+application:update(searchModel, { id = 'sys:ready', data = { width = 120, height = 40 } })
+local searchState = searchModel.tabs[1].state
+application:update(searchModel, { id = 'line_input:text_changed', data = { uid = searchState.searchInput.uid, text = 'first' } })
+application:update(searchModel, { id = 'sys:tick', data = { now = 0.2 } })
+application:update(searchModel, { id = 'line_input:text_changed', data = { uid = searchState.searchInput.uid, text = 'second' } })
+application:update(searchModel, { id = 'sys:tick', data = { now = 0.4 } })
+assert(repositories.patients.lastSearch == nil, 'a replaced debounce deadline does not run the previous search')
+application:update(searchModel, { id = 'sys:tick', data = { now = 0.51 } })
+assert(repositories.patients.lastSearch == 'second', 'the latest search reaches the repository after 300 ms')
+
+local refreshModel = application:init()
+application:update(refreshModel, { id = 'sys:ready', data = { width = 120, height = 40 } })
+local historyLoads = repositories.patient_histories.listCount
+application:update(refreshModel, key('right'))
+assert(repositories.patient_histories.listCount == historyLoads + 1, 'opening a tab reloads it from its repository')
 
 print('controller_spec: ok')

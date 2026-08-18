@@ -1,17 +1,21 @@
 local BaseRepository = require 'repositories.base_repository'
+local Medication = require 'models.Medication'
 
 local MedicationRepository = {}
 MedicationRepository.__index = MedicationRepository
 setmetatable(MedicationRepository, { __index = BaseRepository })
 
 function MedicationRepository.new()
-	return setmetatable(BaseRepository.new('medications'), MedicationRepository)
+	return setmetatable(BaseRepository.new('medications', Medication, {
+		orderBy = { 'name' }, searchFields = { 'name', 'dosage', 'frequency' },
+	}), MedicationRepository)
 end
 
 function MedicationRepository:delete(medication)
-	-- TODO(ORM): Reject deletion while any patientHistoriesMedications row
-	-- references medication.id; otherwise delete and saveChanges().
-	return nil, 'ORM medication deletion is not implemented.'
+	if self:hasReference('patientHistoriesMedications', 'medication_id', medication.id) then
+		return nil, 'The medication cannot be deleted while prescriptions exist for this medication.'
+	end
+	return BaseRepository.delete(self, medication)
 end
 
 return MedicationRepository

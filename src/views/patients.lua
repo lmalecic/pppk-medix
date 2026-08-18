@@ -16,13 +16,6 @@ return EntityView.new {
 	summaryText = function(r)
 		return H.person(r) .. ' | OIB ' .. H.text(r.oib) .. ' | ' .. H.text(r.dateOfBirth)
 	end,
-	detailsText = function(r)
-		return {
-			'Sex: ' .. H.text(r.sex),
-			'Permanent address: ' .. H.text(r.permanentAddress),
-			'Secondary address: ' .. H.text(r.secondaryAddress),
-		}
-	end,
 	actions = {
 		{ label = 'View Patient History', type = 'open_entity', target = 'patient_histories', scopeMethod = 'byPatient', lockField = 'patient_id' },
 		{ label = 'View Appointments', type = 'open_entity', target = 'appointments', scopeMethod = 'byPatient', lockField = 'patient_id' },

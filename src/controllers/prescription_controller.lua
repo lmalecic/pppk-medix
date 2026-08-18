@@ -36,7 +36,12 @@ function PrescriptionController:init(scope)
 		scope = scope, rows = rows or {}, filtered = rows or {}, selected = 1,
 		filter = '', searchInput = search, pickerInput = pickerSearch,
 		mode = 'list', pickerRows = {}, pickerAllRows = {}, pickerSelected = 1,
+		now = 0, pendingSearch = nil,
+		prescribedMedicationIds = {},
 	}
+	if scope.history then
+		for _, prescription in ipairs(rows or {}) do state.prescribedMedicationIds[prescription.medication_id] = true end
+	end
 	return state, Batch(search.msg.enable), err
 end
 
@@ -62,7 +67,11 @@ function PrescriptionController:rowAt(state, index)
 	return state.filtered[index]
 end
 
-function PrescriptionController:label(row)
+function PrescriptionController:label(row, state)
+	if state and state.scope.medication then
+		local ok, history = pcall(function() return row.patientHistory end)
+		return ok and history and tostring(history) or ('Patient history #' .. tostring(row.patientHistory_id or '?'))
+	end
 	local medication = medicationOf(row)
 	return tostring(medication.name or ('Medication #' .. tostring(row.medication_id or '?')))
 		.. ' | ' .. tostring(medication.dosage or '-') .. ' | ' .. tostring(medication.frequency or '-')
@@ -74,18 +83,14 @@ function PrescriptionController:clamp(state)
 end
 
 function PrescriptionController:filter(state)
-	state.filtered = {}
-	local query = state.filter:lower()
-	for _, row in ipairs(state.rows) do
-		if self:label(row):lower():find(query, 1, true) then table.insert(state.filtered, row) end
-	end
+	state.filtered = state.rows
 	self:clamp(state)
 end
 
 function PrescriptionController:reload(state)
 	local rows, err
-	if state.scope.history then rows, err = safe(self.repository, 'listByHistory', state.scope.history.id)
-	else rows, err = safe(self.repository, 'listByMedication', state.scope.medication.id) end
+	if state.scope.history then rows, err = safe(self.repository, 'listByHistory', state.scope.history.id, state.filter)
+	else rows, err = safe(self.repository, 'listByMedication', state.scope.medication.id, state.filter) end
 	if not rows then return nil, err end
 	state.rows = rows; self:filter(state); return true
 end
@@ -94,22 +99,66 @@ function PrescriptionController:message(kind, text)
 	return { type = 'message', message = { kind = kind, title = kind == 'error' and 'Operation failed' or 'Success', text = text } }
 end
 
+function PrescriptionController:availableMedications(state, rows)
+	local prescribed, available = state.prescribedMedicationIds or {}, {}
+	for _, medication in ipairs(rows or {}) do
+		if not prescribed[medication.id] then table.insert(available, medication) end
+	end
+	return available
+end
+
+function PrescriptionController:refreshPrescribedMedicationIds(state)
+	if not state.scope.history then return true end
+	local rows, err = safe(self.repository, 'listByHistory', state.scope.history.id, '')
+	if not rows then return nil, err end
+	state.prescribedMedicationIds = {}
+	for _, prescription in ipairs(rows) do state.prescribedMedicationIds[prescription.medication_id] = true end
+	return true
+end
+
 function PrescriptionController:openPicker(state, context, batch)
-	local rows, err = context:list('medications')
+	local loaded, loadErr = self:refreshPrescribedMedicationIds(state)
+	if not loaded then return self:message('error', loadErr) end
+	local rows, err = context:list('medications', '')
 	if not rows then return self:message('error', err) end
+	rows = self:availableMedications(state, rows)
 	state.mode, state.pickerAllRows, state.pickerRows, state.pickerSelected = 'picker', rows, rows, 1
 	state.pickerInput.text = ''
 	state.searchInput.enabled, state.pickerInput.enabled = false, true
 	batch.push(state.searchInput.msg.disable); batch.push(state.pickerInput.msg.enable)
 end
 
+function PrescriptionController:queueSearch(state, kind, text)
+	state.pendingSearch = { kind = kind, text = text or '', deadline = state.now + 0.3 }
+end
+
+function PrescriptionController:runSearch(state, context)
+	local pending = state.pendingSearch
+	state.pendingSearch = nil
+	if pending.kind == 'picker' then
+		local rows, err = context:list('medications', pending.text)
+		if not rows then return nil, err end
+		state.pickerRows, state.pickerSelected = self:availableMedications(state, rows), 1
+		return true
+	end
+	state.filter = pending.text
+	return self:reload(state)
+end
+
 function PrescriptionController:update(state, msg, context)
 	local batch, cmd = Batch(), nil
 	state.searchInput, cmd = LineInput.update(state.searchInput, msg); batch.push(cmd)
 	state.pickerInput, cmd = LineInput.update(state.pickerInput, msg); batch.push(cmd)
+	if msg.id == 'sys:tick' then
+		state.now = msg.data.now
+		if state.pendingSearch and state.now >= state.pendingSearch.deadline then
+			local ok, err = self:runSearch(state, context)
+			if not ok then return state, batch, self:message('error', err) end
+		end
+	end
 	if state.mode == 'picker' then
 		if pressed(msg, 'esc', 'escape') then
-			state.mode = 'list'; state.pickerInput.enabled, state.searchInput.enabled = false, true
+			state.mode = 'list'; state.pendingSearch = nil; state.pickerInput.enabled, state.searchInput.enabled = false, true
 			batch.push(state.pickerInput.msg.disable); batch.push(state.searchInput.msg.enable)
 		elseif pressed(msg, 'up', 'k') then state.pickerSelected = math.max(1, state.pickerSelected - 1)
 		elseif pressed(msg, 'down', 'j') then state.pickerSelected = math.min(math.max(1, #state.pickerRows), state.pickerSelected + 1)
@@ -123,11 +172,7 @@ function PrescriptionController:update(state, msg, context)
 				return state, batch, self:message('success', 'Medication successfully prescribed.')
 			end
 		elseif msg.id == 'line_input:text_changed' and msg.data.uid == state.pickerInput.uid then
-			state.pickerRows, state.pickerSelected = {}, 1
-			for _, medication in ipairs(state.pickerAllRows) do
-				local view = context:view('medications')
-				if view:summary(medication):lower():find(msg.data.text:lower(), 1, true) then table.insert(state.pickerRows, medication) end
-			end
+			state.pickerSelected = 1; self:queueSearch(state, 'picker', msg.data.text)
 		end
 		return state, batch
 	end
@@ -146,9 +191,9 @@ function PrescriptionController:update(state, msg, context)
 			return state, batch, self:message('success', 'Prescription successfully removed.')
 		end
 	elseif input.pressed(msg, 'ctrl+l') then
-		state.filter = ''; batch.push(state.searchInput.msg.clear); self:filter(state)
+		state.filter = ''; batch.push(state.searchInput.msg.clear); self:queueSearch(state, 'records', '')
 	elseif msg.id == 'line_input:text_changed' and msg.data.uid == state.searchInput.uid then
-		state.filter = msg.data.text; state.selected = 1; self:filter(state)
+		state.selected = 1; self:queueSearch(state, 'records', msg.data.text)
 	end
 	return state, batch
 end

@@ -11,9 +11,26 @@ function EntityView.new(options)
 	return setmetatable(options, EntityView)
 end
 
+function EntityView:bindModel(modelClass)
+	self.modelClass = modelClass
+	for _, field in ipairs(self.fields) do
+		field.modelField = modelClass and modelClass.fieldsByName[field.key] or nil
+		if modelClass then
+			for _, relation in pairs(modelClass.relations) do
+				if relation.sourceColumn == field.key and relation.foreignKeyField then
+					field.modelRelation = relation
+					field.relation = field.relation or relation.referenceTable
+				end
+			end
+		end
+		local typeName = field.modelField and field.modelField.type.typeName
+		field.dateTime = typeName == 'Timestamp' or typeName == 'TimestampTz'
+	end
+end
+
 function EntityView:summary(entity)
 	if self.summaryText then return self.summaryText(entity) end
-	return self.title .. ' #' .. tostring(entity.id or '?')
+	return tostring(entity)
 end
 
 function EntityView:detailLines(entity)
@@ -21,10 +38,26 @@ function EntityView:detailLines(entity)
 	return {}
 end
 
-function EntityView:fieldValue(entity, field)
+function EntityView:fieldValue(entity, field, related)
+	if related then return tostring(related) end
+	if entity and field.modelRelation then
+		local ok, value = pcall(function() return entity[field.modelRelation.name] end)
+		if ok and value then return tostring(value) end
+	end
 	local value = entity and entity[field.key]
 	if field.format then return field.format(value, entity) end
 	return value == nil and '' or tostring(value)
+end
+
+function EntityView:placeholder(field)
+	local metadata = field.modelField
+	if not metadata then return nil end
+	if metadata.default ~= nil then
+		if type(metadata.default) == 'table' and metadata.default.format then return metadata.default:format() end
+		return tostring(metadata.default)
+	end
+	if not metadata.nullable then return 'required' end
+	return nil
 end
 
 function EntityView:allActions()

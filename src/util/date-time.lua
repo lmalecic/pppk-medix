@@ -20,19 +20,12 @@ DateTime.__index = DateTime
 --- @param minute number?
 --- @param second number?
 function DateTime.new(year, month, day, hour, minute, second)
-    assert(tonumber(year) ~= nil, "year is not a number")
-    assert(tonumber(month) ~= nil, "month is not a number")
-    assert(tonumber(day) ~= nil, "day is not a number")
-    assert(tonumber(hour) ~= nil, "hour is not a number")
-    assert(tonumber(minute) ~= nil, "minute is not a number")
-    assert(tonumber(second) ~= nil, "second is not a number")
+    year, month, day = tonumber(year or 1970), tonumber(month or 1), tonumber(day or 1)
+    hour, minute, second = tonumber(hour or 0), tonumber(minute or 0), tonumber(second or 0)
+    assert(year and month and day and hour and minute and second, "DateTime components must be numbers")
     return setmetatable({
-        year = year and math.floor(year) or 1970,
-        month = month and math.floor(month) or 1,
-        day = day and math.floor(day) or 1,
-        hour = hour and math.floor(hour) or 0,
-        minute = minute and math.floor(minute) or 0,
-        second = second or 0,
+        year = math.floor(year), month = math.floor(month), day = math.floor(day),
+        hour = math.floor(hour), minute = math.floor(minute), second = math.floor(second),
     }, DateTime)
 end
 
@@ -43,6 +36,8 @@ end
 
 --- @return DateTime
 function DateTime.fromString(dateTimeString)
+    if getmetatable(dateTimeString) == DateTime then return dateTimeString end
+    assert(type(dateTimeString) == "string", "dateTimeString must be a string")
     --- FORMAT: 2026-08-18 13:40:53.065341
     local y, m, d, h, min, s = dateTimeString:match("^(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
     local y_num = assert(tonumber(y), "Invalid dateTimeString format: year is not a number")
@@ -52,6 +47,11 @@ function DateTime.fromString(dateTimeString)
     local min_num = assert(tonumber(min), "Invalid dateTimeString format: minute is not a number")
     local s_num = assert(tonumber(s), "Invalid dateTimeString format: second is not a number")
     return DateTime.new(y_num, m_num, d_num, h_num, min_num, s_num)
+end
+
+-- pgmoon extended-query serialization hook. PostgreSQL OID 1184 is timestamptz.
+function DateTime:pgmoon_serialize()
+    return 1184, tostring(self)
 end
 
 --- @param timestamp number

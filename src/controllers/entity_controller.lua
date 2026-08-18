@@ -1,6 +1,7 @@
 local Batch = require 'mate.batch'
 local LineInput = require 'mate.components.line_input'
 local input = require 'mate.input'
+local DatePicker = require 'components.date_picker'
 
 local EntityController = {}
 EntityController.__index = EntityController
@@ -44,11 +45,13 @@ function EntityController:init(scope)
 	local state = {
 		scope = scope,
 		lockedValues = copy(scope and scope.lockedValues),
+		lockedRelations = copy(scope and scope.lockedRelations),
 		records = {}, filtered = {}, filter = '', selected = 1,
 		focus = 'results', mode = 'view', actionIndex = 1, editIndex = 1,
 		draft = nil, searchInput = searchInput, valueInput = valueInput,
 		relationInput = relationInput,
 		modal = { type = nil, rows = {}, selected = 1, filter = '' },
+		draftRelations = {}, now = 0, pendingSearch = nil,
 	}
 	local rows, err = call(self.repository, 'list', scope)
 	state.records = rows or {}
@@ -67,15 +70,7 @@ function EntityController:deactivate(state)
 end
 
 function EntityController:applyFilter(state)
-	local query = (state.filter or ''):lower()
-	state.filtered = {}
-	for _, entity in ipairs(state.records or {}) do
-		local chunks = { self.view:summary(entity) }
-		for _, line in ipairs(self.view:detailLines(entity)) do table.insert(chunks, line) end
-		if query == '' or table.concat(chunks, ' '):lower():find(query, 1, true) then
-			table.insert(state.filtered, entity)
-		end
-	end
+	state.filtered = state.records or {}
 	self:clamp(state)
 end
 
@@ -120,6 +115,7 @@ function EntityController:enterList(state, batch)
 	state.focus, state.mode, state.actionIndex = 'results', 'view', 1
 	state.draft, state.editIndex = nil, 1
 	state.modal.type = nil
+	state.pendingSearch = nil
 	self:setInput(state, batch, 'search')
 end
 
@@ -128,12 +124,22 @@ function EntityController:beginEdit(state, create, batch)
 	state.mode = create and 'create' or 'edit'
 	state.editIndex = 1
 	state.draft = create and copy(self.view.defaults) or copyEntityFields(self.view, self:current(state))
+	state.draftRelations = create and copy(state.lockedRelations) or {}
+	if not create then
+		local entity = self:current(state)
+		for _, field in ipairs(self.view.fields) do
+			if field.modelRelation then
+				local ok, related = pcall(function() return entity[field.modelRelation.name] end)
+				if ok then state.draftRelations[field.key] = related end
+			end
+		end
+	end
 	for key, value in pairs(state.lockedValues) do state.draft[key] = value end
 	self:setInput(state, batch, nil)
 end
 
 function EntityController:reload(state)
-	local rows, err = call(self.repository, 'list', state.scope)
+	local rows, err = call(self.repository, 'list', state.scope, state.filter)
 	if not rows then return nil, err end
 	state.records = rows
 	self:applyFilter(state)
@@ -169,9 +175,18 @@ function EntityController:delete(state, batch)
 	return self:message('success', self.view.title .. ' successfully deleted.')
 end
 
+function EntityController:availableRelations(state, field, rows)
+	local selectedId, available = state.draft and state.draft[field.key], {}
+	for _, row in ipairs(rows or {}) do
+		if selectedId == nil or row.id ~= selectedId then table.insert(available, row) end
+	end
+	return available
+end
+
 function EntityController:openRelation(state, field, context, batch)
-	local rows, err = context:list(field.relation)
+	local rows, err = context:list(field.relation, '')
 	if not rows then return self:message('error', err) end
+	rows = self:availableRelations(state, field, rows)
 	state.modal = {
 		type = 'relation', field = field, targetView = context:view(field.relation),
 		rows = rows, allRows = rows, selected = 1, filter = '',
@@ -186,13 +201,41 @@ end
 function EntityController:openValue(state, field, batch)
 	state.modal = { type = 'value', field = field }
 	state.valueInput.text = tostring(state.draft[field.key] or '')
+	state.valueInput.placeholder = self.view:placeholder(field) or ''
 	state.focus = 'modal'
 	self:setInput(state, batch, 'value')
+end
+
+function EntityController:openDate(state, field, batch)
+	state.modal = { type = 'date', field = field, picker = DatePicker.new(state.draft[field.key]) }
+	state.focus = 'modal'
+	self:setInput(state, batch, nil)
+end
+
+function EntityController:queueSearch(state, kind, text)
+	state.pendingSearch = { kind = kind, text = text or '', deadline = state.now + 0.3 }
+end
+
+function EntityController:runPendingSearch(state, context)
+	local pending = state.pendingSearch
+	if not pending then return true end
+	state.pendingSearch = nil
+	if pending.kind == 'records' then
+		local rows, err = call(self.repository, 'list', state.scope, pending.text)
+		if not rows then return nil, err end
+		state.records = rows; self:applyFilter(state)
+	else
+		local rows, err = context:list(state.modal.field.relation, pending.text)
+		if not rows then return nil, err end
+		state.modal.rows, state.modal.selected = self:availableRelations(state, state.modal.field, rows), 1
+	end
+	return true
 end
 
 function EntityController:closeModal(state, batch)
 	state.focus = 'details'
 	state.modal = { type = nil, rows = {}, selected = 1, filter = '' }
+	if state.pendingSearch and state.pendingSearch.kind == 'relation' then state.pendingSearch = nil end
 	self:setInput(state, batch, nil)
 end
 
@@ -204,7 +247,11 @@ function EntityController:performAction(state, action, batch)
 	if action.type == 'open_entity' then
 		return {
 			type = 'open_entity', target = action.target,
-			scope = { method = action.scopeMethod, id = entity.id, lockedValues = { [action.lockField] = entity.id } },
+			scope = {
+				method = action.scopeMethod, id = entity.id,
+				lockedValues = { [action.lockField] = entity.id },
+				lockedRelations = { [action.lockField] = entity },
+			},
 		}
 	elseif action.type == 'manage_prescriptions' then
 		return { type = 'manage_prescriptions', history = entity }
@@ -219,9 +266,20 @@ function EntityController:update(state, msg, context)
 	state.searchInput, cmd = LineInput.update(state.searchInput, msg); batch.push(cmd)
 	state.valueInput, cmd = LineInput.update(state.valueInput, msg); batch.push(cmd)
 	state.relationInput, cmd = LineInput.update(state.relationInput, msg); batch.push(cmd)
+	if msg.id == 'sys:tick' then
+		state.now = msg.data.now
+		if state.pendingSearch and state.now >= state.pendingSearch.deadline then
+			local ok, err = self:runPendingSearch(state, context)
+			if not ok then return state, batch, self:message('error', err) end
+		end
+	end
 
 	if state.focus == 'modal' then
-		if pressed(msg, 'esc', 'escape') then self:closeModal(state, batch)
+		if state.modal.type == 'date' then
+			local action, value = state.modal.picker:update(msg)
+			if action == 'confirm' then state.draft[state.modal.field.key] = value; self:closeModal(state, batch)
+			elseif action == 'cancel' then self:closeModal(state, batch) end
+		elseif pressed(msg, 'esc', 'escape') then self:closeModal(state, batch)
 		elseif state.modal.type == 'value' and pressed(msg, 'enter', 'return') then
 			state.draft[state.modal.field.key] = state.valueInput.text
 			self:closeModal(state, batch)
@@ -230,12 +288,14 @@ function EntityController:update(state, msg, context)
 			elseif pressed(msg, 'down', 'j') then state.modal.selected = math.min(math.max(1, #state.modal.rows), state.modal.selected + 1)
 			elseif pressed(msg, 'enter', 'return') then
 				local selected = state.modal.rows[state.modal.selected]
-				if selected then state.draft[state.modal.field.key] = selected.id; self:closeModal(state, batch) end
-			elseif msg.id == 'line_input:text_changed' and msg.data.uid == state.relationInput.uid then
-				state.modal.filter, state.modal.rows, state.modal.selected = msg.data.text, {}, 1
-				for _, row in ipairs(state.modal.allRows) do
-					if state.modal.targetView:summary(row):lower():find(msg.data.text:lower(), 1, true) then table.insert(state.modal.rows, row) end
+				if selected then
+					state.draft[state.modal.field.key] = selected.id
+					state.draftRelations[state.modal.field.key] = selected
+					self:closeModal(state, batch)
 				end
+			elseif msg.id == 'line_input:text_changed' and msg.data.uid == state.relationInput.uid then
+				state.modal.filter, state.modal.selected = msg.data.text, 1
+				self:queueSearch(state, 'relation', msg.data.text)
 			end
 		end
 		return state, batch
@@ -252,7 +312,10 @@ function EntityController:update(state, msg, context)
 			if state.editIndex <= #self.view.fields then
 				local field = self.view.fields[state.editIndex]
 				if state.lockedValues[field.key] == nil and not field.readonly then
-					local intent = field.relation and self:openRelation(state, field, context, batch) or self:openValue(state, field, batch)
+					local intent
+					if field.relation then intent = self:openRelation(state, field, context, batch)
+					elseif field.dateTime then self:openDate(state, field, batch)
+					else self:openValue(state, field, batch) end
 					if intent then return state, batch, intent end
 				end
 			elseif state.editIndex == #self.view.fields + 1 then
@@ -272,9 +335,9 @@ function EntityController:update(state, msg, context)
 			if row and rawget(row, 'create') then self:beginEdit(state, true, batch)
 			elseif row then state.focus, state.mode, state.actionIndex = 'details', 'actions', 1; self:setInput(state, batch, nil) end
 		elseif input.pressed(msg, 'ctrl+l') then
-			state.filter = ''; batch.push(state.searchInput.msg.clear); self:applyFilter(state)
+			state.filter = ''; batch.push(state.searchInput.msg.clear); self:queueSearch(state, 'records', '')
 		elseif msg.id == 'line_input:text_changed' and msg.data.uid == state.searchInput.uid then
-			state.filter, state.selected = msg.data.text, 1; self:applyFilter(state)
+			state.filter, state.selected = msg.data.text, 1; self:queueSearch(state, 'records', msg.data.text)
 		end
 	end
 	return state, batch

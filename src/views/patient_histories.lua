@@ -15,11 +15,17 @@ return EntityView.new {
 		return H.text(r.diagnosis) .. ' | ' .. H.text(r.fromDate) .. ' - ' .. H.text(r.toDate)
 	end,
 	detailsText = function(r)
-		return {
-			'Patient: ' .. H.relation(r, 'patient', 'patient_id', H.person),
-			'Doctor: ' .. H.relation(r, 'doctor', 'doctor_id', H.person),
-			'Medications: select Manage Medications below',
-		}
+		local lines = { 'Medications:' }
+		local ok, prescriptions = pcall(function() return r.medications end)
+		prescriptions = ok and prescriptions or {}
+		if #prescriptions == 0 then table.insert(lines, '  - None') end
+		for index = 1, math.min(4, #prescriptions) do
+			local prescription = prescriptions[index]
+			local medication = prescription.medication
+			table.insert(lines, '  - ' .. (medication and tostring(medication) or tostring(prescription)))
+		end
+		if #prescriptions > 4 then table.insert(lines, ' and ' .. tostring(#prescriptions - 4) .. ' more') end
+		return lines
 	end,
 	actions = {
 		{ label = 'Manage Medications', type = 'manage_prescriptions' },

@@ -14,4 +14,11 @@ local PatientHistory = Model("patientHistories", {
     { "medications", Relation.hasMany("patientHistoriesMedications", "patientHistory_id") },
 })
 
+function PatientHistory:toString()
+    local patient = self.patient and tostring(self.patient) or ('patient #' .. tostring(self.patient_id or '?'))
+    local doctor = self.doctor and tostring(self.doctor) or ('doctor #' .. tostring(self.doctor_id or '?'))
+    return string.format("%s | %s - %s | %s | %s", self.diagnosis or '-', tostring(self.fromDate or '-'), tostring(self.toDate or '-'), patient, doctor)
+end
+PatientHistory.__tostring = PatientHistory.toString
+
 return PatientHistory

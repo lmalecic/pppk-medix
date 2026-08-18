@@ -17,8 +17,10 @@ return {
 	},
 	symbols = {
 		selection = '> ',
+		deletionSelection = 'X ',
 		tabSeparator = ' │ ',
 		verticalDivider = '│',
+		horizontalDivider = '─',
 	},
 	padding = {
 		fieldset = { 0, 1, 0, 1 },

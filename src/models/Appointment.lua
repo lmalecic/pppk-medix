@@ -12,4 +12,11 @@ local Appointment = Model("appointments", {
     { "specialist", Relation.belongsTo("doctors", "id"), Constraint.NotNull },
 })
 
+function Appointment:toString()
+    local procedure = self.procedure and tostring(self.procedure) or ('procedure #' .. tostring(self.procedure_id or '?'))
+    local patient = self.patient and tostring(self.patient) or ('patient #' .. tostring(self.patient_id or '?'))
+    return string.format("%s | %s | %s", tostring(self.scheduledAt or '-'), procedure, patient)
+end
+Appointment.__tostring = Appointment.toString
+
 return Appointment

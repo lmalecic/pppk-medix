@@ -11,8 +11,8 @@ local MessageDialog = require 'views.message_dialog'
 local ApplicationController = {}
 ApplicationController.__index = ApplicationController
 
-local function safeList(repository, scope)
-	local ok, rows, err = pcall(repository.list, repository, scope)
+local function safeList(repository, scope, search)
+	local ok, rows, err = pcall(repository.list, repository, scope, search)
 	if not ok then return nil, tostring(rows) end
 	return rows, err
 end
@@ -20,6 +20,7 @@ end
 function ApplicationController.new(views, repositories)
 	local self = setmetatable({}, ApplicationController)
 	self.views, self.repositories = views, repositories
+	for _, view in ipairs(views) do view:bindModel(repositories[view.key].modelClass) end
 	self.navbar, self.entityScreen = Navbar.new(views), EntityScreen.new()
 	self.prescriptionsView, self.messageDialog = PrescriptionsView.new(), MessageDialog.new()
 	return self
@@ -27,10 +28,10 @@ end
 
 function ApplicationController:view(key) return self.views.byKey[key] end
 
-function ApplicationController:list(key)
+function ApplicationController:list(key, search)
 	local repository = self.repositories[key]
 	if not repository then return nil, 'No repository is registered for ' .. tostring(key) .. '.' end
-	return safeList(repository, nil)
+	return safeList(repository, nil, search)
 end
 
 function ApplicationController:init()
@@ -56,6 +57,8 @@ function ApplicationController:switchTab(model, direction, batch)
 	batch.push(current.controller:deactivate(current.state))
 	model.activeTab = nextTab
 	local target = model.tabs[nextTab]
+	local loaded, err = target.controller:reload(target.state)
+	if not loaded then model.message = { kind = 'error', title = 'Loading failed', text = err } end
 	batch.push(target.controller:activate(target.state))
 end
 
@@ -86,6 +89,8 @@ function ApplicationController:popOverlay(model, batch)
 	local current = table.remove(model.overlays)
 	batch.push(current.controller:deactivate(current.state))
 	local target = self:top(model)
+	local loaded, err = target.controller:reload(target.state)
+	if not loaded then model.message = { kind = 'error', title = 'Loading failed', text = err } end
 	batch.push(target.controller:activate(target.state))
 end
 

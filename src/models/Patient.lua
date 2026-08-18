@@ -26,7 +26,7 @@ Patient.Sex = {
 
 --- @return string
 function Patient:getSummary()
-    return string.format("%s %s | OIB %s | %s", self.firstName, self.lastName, self.oib, DateTime.fromString(self.dateOfBirth))
+    return string.format("%s %s | OIB %s | %s", self.firstName, self.lastName, self.oib, tostring(self.dateOfBirth))
 end
 
 --- @return string[]
@@ -37,5 +37,8 @@ function Patient:getDetails()
         "Secondary Address: " .. self.secondaryAddress,
     }
 end
+
+function Patient:toString() return string.format("%s %s | OIB %s", self.firstName or '-', self.lastName or '-', self.oib or '-') end
+Patient.__tostring = Patient.toString
 
 return Patient

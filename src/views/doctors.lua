@@ -9,7 +9,7 @@ return EntityView.new {
 		{ key = 'specialization_id', label = 'Specialization', relation = 'specializations', readonly = true },
 	},
 	summaryText = function(r)
-		return H.person(r) .. ' | specialization #' .. H.text(r.specialization_id)
+		return tostring(r)
 	end,
 	detailsText = function()
 		return { 'Read-only: doctors are defined during initialization.' }

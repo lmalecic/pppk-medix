@@ -1,28 +1,19 @@
-local db = require("context")
 local BaseRepository = require 'repositories.base_repository'
+local Doctor = require 'models.Doctor'
 
 local DoctorRepository = {}
 DoctorRepository.__index = DoctorRepository
 setmetatable(DoctorRepository, { __index = BaseRepository })
 
 function DoctorRepository.new()
-	return setmetatable(BaseRepository.new('doctors'), DoctorRepository)
+	return setmetatable(BaseRepository.new('doctors', Doctor, {
+		includes = { 'specialization' }, orderBy = { 'lastName', 'firstName' },
+		searchFields = { 'firstName', 'lastName' }, scopes = { bySpecialization = 'specialization_id' },
+	}), DoctorRepository)
 end
 
-function DoctorRepository:list(scope)
-    local query = db.data.doctors:include(function(doctor)
-        return doctor.specialization
-    end):orderBy(function(doctor)
-        return doctor.firstName:asc(), doctor.lastName:asc()
-    end)
-
-    if scope and scope.method == "bySpecialization" then
-        query = query:where(function(doctor)
-            return doctor.specialization_id:equals(scope.id)
-        end)
-    end
-
-    return query:all()
+function DoctorRepository:extraSearchNodes(proxy, search)
+	return self:foreignKeyMatches(proxy, 'specialization_id', self:matchingIds('specializations', { 'name' }, search))
 end
 
 function DoctorRepository:create()

@@ -21,4 +21,12 @@ for file in lfs.dir("src/models") do
     end
 end
 
-return DbContext.new(config, schema)
+local db = DbContext.new(config, schema)
+local DateTime = require("util.date-time")
+
+-- pgmoon returns Timestamp/TimestampTz columns as DateTime values throughout the app.
+local function deserializeDateTime(_, value) return DateTime.fromString(value) end
+db.connection.client:set_type_deserializer(1114, "timestamp", deserializeDateTime)
+db.connection.client:set_type_deserializer(1184, "timestamptz", deserializeDateTime)
+
+return db

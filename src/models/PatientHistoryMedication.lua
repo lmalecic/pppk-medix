@@ -9,4 +9,9 @@ local PatientHistoryMedication = Model("patientHistoriesMedications", {
     { "patientHistory", Relation.belongsTo("patientHistories", "id"), Constraint.NotNull },
 })
 
+function PatientHistoryMedication:toString()
+    return self.medication and tostring(self.medication) or ('Medication #' .. tostring(self.medication_id or '?'))
+end
+PatientHistoryMedication.__tostring = PatientHistoryMedication.toString
+
 return PatientHistoryMedication

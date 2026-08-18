@@ -2,7 +2,7 @@ local EntityView = require 'views.entity_view'
 local H = require 'views.helpers'
 
 return EntityView.new {
-	key = 'appointments', title = 'Appointments', navTitle = 'Appointments', searchPlaceholder = 'Patient, procedure, specialist, date...',
+	key = 'appointments', title = 'Appointments', navTitle = 'Appointments', searchPlaceholder = 'Patient, procedure, specialist...',
 	fields = {
 		{ key = 'patient_id', label = 'Patient', relation = 'patients' },
 		{ key = 'procedure_id', label = 'Procedure', relation = 'procedures' },
@@ -11,6 +11,6 @@ return EntityView.new {
 	},
 	defaults = { patient_id = '', procedure_id = '', scheduledAt = '', specialist_id = '' },
 	summaryText = function(r)
-		return H.text(r.scheduledAt) .. ' | procedure #' .. H.text(r.procedure_id) .. ' | patient #' .. H.text(r.patient_id)
+		return tostring(r)
 	end,
 }

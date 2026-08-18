@@ -9,4 +9,7 @@ local Specialization = Model("specializations", {
     { "doctors", Relation.hasMany("doctors", "specialization_id") },
 })
 
+function Specialization:toString() return self.name or ('Specialization #' .. tostring(self.id or '?')) end
+Specialization.__tostring = Specialization.toString
+
 return Specialization

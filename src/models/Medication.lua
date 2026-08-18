@@ -11,4 +11,9 @@ local Medication = Model("medications", {
     { "relatedPatientHistories", Relation.hasMany("patientHistoriesMedications", "medication_id") }
 })
 
+function Medication:toString()
+    return string.format("%s | %s | %s", self.name or '-', self.dosage or '-', self.frequency or '-')
+end
+Medication.__tostring = Medication.toString
+
 return Medication

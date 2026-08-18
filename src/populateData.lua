@@ -74,3 +74,14 @@ end
 if areChangesMade then
     db:saveChanges()
 end
+
+-- Explicit BY DEFAULT identity values do not advance PostgreSQL sequences.
+-- Keep later CRUD inserts clear of the fixed initialization IDs.
+db:query([[
+    SELECT setval(pg_get_serial_sequence('specializations', 'id'),
+        COALESCE((SELECT MAX(id) FROM specializations), 1), true)
+]])
+db:query([[
+    SELECT setval(pg_get_serial_sequence('doctors', 'id'),
+        COALESCE((SELECT MAX(id) FROM doctors), 1), true)
+]])

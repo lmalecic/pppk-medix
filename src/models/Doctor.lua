@@ -13,4 +13,10 @@ local Doctor = Model("doctors", {
     { "patientAppointments",      Relation.hasMany("appointments", "specialist_id") },
 })
 
+function Doctor:toString()
+    local specialization = self.specialization and tostring(self.specialization) or ('#' .. tostring(self.specialization_id or '?'))
+    return string.format("%s %s | %s", self.firstName or '-', self.lastName or '-', specialization)
+end
+Doctor.__tostring = Doctor.toString
+
 return Doctor
