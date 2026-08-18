@@ -31,4 +31,4 @@ COPY --from=mate-builder /tmp/mate/dist/out.lua /app/dist/out.lua
 COPY --from=mate-builder /tmp/mate/term/target/release/libterm.so /usr/local/lib/lua/5.1/term.so
 COPY src ./src
 
-CMD ["lua5.1", "src/entrypoint.lua"]
+CMD ["lua5.1", "src/main.lua"]

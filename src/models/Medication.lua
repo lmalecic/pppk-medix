@@ -8,7 +8,7 @@ local Medication = Model("medications", {
     { "name", Types.Text, Constraint.NotNull, Constraint.Unique },
     { "dosage", Types.Text, Constraint.NotNull },
     { "frequency", Types.Text, Constraint.NotNull },
-    { "relatedPatientHistories", Relation.hasMany("patientHistories", "medication_id") }
+    { "relatedPatientHistories", Relation.hasMany("patientHistoriesMedications", "medication_id") }
 })
 
 return Medication

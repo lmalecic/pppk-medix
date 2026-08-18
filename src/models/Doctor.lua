@@ -4,7 +4,7 @@ local Constraint = require("orm.model.constraint")
 local Relation = require("orm.model.relation")
 
 local Doctor = Model("doctors", {
-    { "id",                       Types.Int,                                        Constraint.PrimaryKey, Constraint.AutoIncrement(Constraint.IdentityMode.ALWAYS) },
+    { "id",                       Types.Int,                                        Constraint.PrimaryKey, Constraint.AutoIncrement(Constraint.IdentityMode.BY_DEFAULT) },
     { "firstName",                Types.Text,                                       Constraint.NotNull },
     { "lastName",                 Types.Text,                                       Constraint.NotNull },
 

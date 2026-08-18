@@ -10,7 +10,7 @@ local PatientHistory = Model("patientHistories", {
     { "toDate", Types.Timestamp },
     { "patient", Relation.belongsTo("patients", "id"), Constraint.NotNull },
     { "doctor", Relation.belongsTo("doctors", "id"), Constraint.NotNull },
-    { "medications", Relation.belongsToMany("medications", "patient_id") },
+    { "medications", Relation.hasMany("patientHistoriesMedications", "patientHistory_id") },
 })
 
 return PatientHistory

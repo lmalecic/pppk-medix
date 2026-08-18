@@ -9,11 +9,12 @@ local config = {
     user = os.getenv("PGUSER") or "medix",
     password = os.getenv("PGPASSWORD") or "medix",
     autoMigrate = false,
+    migrationsDir = "src/migrations",
 }
 
 local schema = {}
 
-for file in lfs.dir("models") do
+for file in lfs.dir("src/models") do
     if file:match("%.lua$") then
         local moduleName = file:sub(1, -5)
         table.insert(schema, require("models." .. moduleName))
