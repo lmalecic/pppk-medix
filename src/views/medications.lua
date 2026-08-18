@@ -2,7 +2,7 @@ local EntityView = require 'views.entity_view'
 local H = require 'views.helpers'
 
 return EntityView.new {
-	key = 'medications', title = 'Medications', navTitle = 'Meds', searchPlaceholder = 'Name, dosage, frequency...',
+	key = 'medications', title = 'Medications', navTitle = 'Medications', searchPlaceholder = 'Name, dosage, frequency...',
 	fields = {
 		{ key = 'name', label = 'Name' },
 		{ key = 'dosage', label = 'Dosage' },

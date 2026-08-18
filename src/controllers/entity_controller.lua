@@ -18,6 +18,12 @@ local function copy(source)
 	return result
 end
 
+local function copyEntityFields(view, entity)
+	local result = { id = entity.id }
+	for _, field in ipairs(view.fields) do result[field.key] = entity[field.key] end
+	return result
+end
+
 local function call(repository, method, ...)
 	local fn = repository[method]
 	if not fn then return nil, 'Repository method ' .. method .. ' is not implemented.' end
@@ -87,7 +93,7 @@ end
 
 function EntityController:current(state)
 	local row = self:rowAt(state, state.selected)
-	if row and not row.create then return row end
+	if row and not rawget(row, 'create') then return row end
 	return nil
 end
 
@@ -121,7 +127,7 @@ function EntityController:beginEdit(state, create, batch)
 	state.focus = 'details'
 	state.mode = create and 'create' or 'edit'
 	state.editIndex = 1
-	state.draft = copy(create and self.view.defaults or self:current(state))
+	state.draft = create and copy(self.view.defaults) or copyEntityFields(self.view, self:current(state))
 	for key, value in pairs(state.lockedValues) do state.draft[key] = value end
 	self:setInput(state, batch, nil)
 end
@@ -263,7 +269,7 @@ function EntityController:update(state, msg, context)
 		elseif pressed(msg, 'down', 'j') then state.selected = state.selected + 1; self:clamp(state)
 		elseif pressed(msg, 'enter', 'return') then
 			local row = self:rowAt(state, state.selected)
-			if row and row.create then self:beginEdit(state, true, batch)
+			if row and rawget(row, 'create') then self:beginEdit(state, true, batch)
 			elseif row then state.focus, state.mode, state.actionIndex = 'details', 'actions', 1; self:setInput(state, batch, nil) end
 		elseif input.pressed(msg, 'ctrl+l') then
 			state.filter = ''; batch.push(state.searchInput.msg.clear); self:applyFilter(state)

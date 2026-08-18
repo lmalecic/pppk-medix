@@ -26,12 +26,12 @@ end
 
 function Layout:resize(width, height)
 	self.width, self.height = width, height
-	self.header = fieldset('MediX v0.1', 1, 1, math.max(24, width - 1), 3)
+	self.header = fieldset('MediX v0.1', 1, 1, math.max(24, width - 2), 3)
 	local leftWidth = math.max(24, math.floor((width - 2) * 0.52))
 	self.search = fieldset('Search', 1, 4, leftWidth, 3)
 	self.list = fieldset('Results', 1, 7, leftWidth, math.max(5, height - 7))
 	self.details = fieldset('', self.list.resolved.total_w + 2, 4,
-		math.max(24, width - self.list.resolved.total_w - 2), math.max(5, height - 4))
+		math.max(24, width - self.list.resolved.total_w - 3), math.max(5, height - 4))
 	local overlayWidth = math.min(math.max(48, math.floor(width * 0.76)), math.max(48, width - 6))
 	local overlayHeight = math.min(math.max(18, math.floor(height * 0.78)), math.max(18, height - 4))
 	self.overlay = window('', math.max(1, math.floor((width - overlayWidth) / 2)),

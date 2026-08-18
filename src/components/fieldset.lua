@@ -1,4 +1,5 @@
 local Box = require 'mate.box'
+local Style = require 'components.style'
 
 local Fieldset = {}
 
@@ -8,10 +9,11 @@ local function title_text(title)
 end
 
 function Fieldset.init(title)
+	local padding = Style.padding.fieldset
 	local box = Box()
 		.border(true)
-		.border_color('#303640')
-		.padding(0, 1, 0, 1)
+		.border_color(Style.colors.border)
+		.padding(padding[1], padding[2], padding[3], padding[4])
 
 	return {
 		title = title,
@@ -45,8 +47,8 @@ function Fieldset.draw(fieldset, buf, layout, content_fn)
 	local title = title_text(fieldset.title)
 	if title then
 		buf:with_offset(layout.bx + 2, layout.by, function()
-			buf:set_fg('#d7e1ee')
-			buf:set_attr('bold')
+			buf:set_fg(Style.colors.title)
+			buf:set_attr(Style.attributes.strong)
 			buf:write(title)
 			buf:set_attr(nil)
 			buf:set_fg(nil)

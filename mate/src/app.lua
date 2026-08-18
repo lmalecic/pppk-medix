@@ -36,7 +36,7 @@ local function exit_with_err(err)
   deinit_term()
   term:println(tostring(err))
   term:println(debug.traceback())
-  os.exit(false)
+  os.exit(1)
 end
 
 local function load_confg(meta_config)

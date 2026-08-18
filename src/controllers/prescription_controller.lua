@@ -136,7 +136,7 @@ function PrescriptionController:update(state, msg, context)
 	elseif pressed(msg, 'down', 'j') then state.selected = state.selected + 1; self:clamp(state)
 	elseif pressed(msg, 'enter', 'return') then
 		local row = self:rowAt(state, state.selected)
-		if row and row.prescribe then
+		if row and rawget(row, 'prescribe') then
 			local intent = self:openPicker(state, context, batch)
 			if intent then return state, batch, intent end
 		elseif row and state.scope.history then

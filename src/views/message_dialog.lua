@@ -1,4 +1,5 @@
 local Window = require 'components.window'
+local Style = require 'components.style'
 
 local MessageDialog = {}
 MessageDialog.__index = MessageDialog
@@ -27,16 +28,16 @@ function MessageDialog:view(message, buf, layout)
 		Window.title(layout.message.window, message.title or 'Message')
 		Window.draw(layout.message.window, buf, layout.message.resolved, function(width)
 			if message.kind == 'error' then
-				buf:set_fg('#c08080')
+				buf:set_fg(Style.colors.error)
 			elseif message.kind == 'success' then
-				buf:set_fg('#80b890')
+				buf:set_fg(Style.colors.success)
 			else
-				buf:set_fg('#8aa2c1')
+				buf:set_fg(Style.colors.accent)
 			end
 			writeWrapped(buf, message.text or '', width)
 			buf:set_fg(nil)
 			buf:write('\n\n')
-			buf:set_fg('#6f7f96'); buf:write('ENTER or ESC to close'); buf:set_fg(nil)
+			buf:set_fg(Style.colors.muted); buf:write('ENTER or ESC to close'); buf:set_fg(nil)
 		end)
 	end)
 end

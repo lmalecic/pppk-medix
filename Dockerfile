@@ -3,11 +3,15 @@ FROM rust:1-bookworm AS mate-builder
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     liblua5.1-0-dev \
+    lua5.1 \
     pkg-config \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp/mate
 COPY mate/ ./
+
+RUN lua5.1 dist/bundler.lua -f:text -m:dist.manifest
+RUN mv out.lua dist/out.lua
 
 WORKDIR /tmp/mate/term
 RUN cargo build --release

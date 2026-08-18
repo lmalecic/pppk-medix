@@ -562,7 +562,7 @@ return function()
     sattr = nil,
     border_enabled = false,
     border_color = nil,
-    border_chars = { v = '│', h = '─', tl = '┌', tr = '┐', bl = '└', br = '┘' }
+    border_chars = { v = '│', h = '─', tl = '╭', tr = '╮', bl = '╰', br = '╯' }
   }
 
   local self = {}
@@ -768,7 +768,7 @@ local function exit_with_err(err)
   deinit_term()
   term:println(tostring(err))
   term:println(debug.traceback())
-  os.exit(false)
+  os.exit(1)
 end
 
 local function load_confg(meta_config)

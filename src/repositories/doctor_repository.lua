@@ -1,3 +1,4 @@
+local db = require("context")
 local BaseRepository = require 'repositories.base_repository'
 
 local DoctorRepository = {}
@@ -9,9 +10,19 @@ function DoctorRepository.new()
 end
 
 function DoctorRepository:list(scope)
-	-- TODO(ORM): Return all doctors, or filter by specialization_id when opened
-	-- from the Specializations screen.
-	return {}
+    local query = db.data.doctors:include(function(doctor)
+        return doctor.specialization
+    end):orderBy(function(doctor)
+        return doctor.firstName:asc(), doctor.lastName:asc()
+    end)
+
+    if scope and scope.method == "bySpecialization" then
+        query = query:where(function(doctor)
+            return doctor.specialization_id:equals(scope.id)
+        end)
+    end
+
+    return query:all()
 end
 
 function DoctorRepository:create()

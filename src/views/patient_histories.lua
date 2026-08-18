@@ -2,7 +2,7 @@ local EntityView = require 'views.entity_view'
 local H = require 'views.helpers'
 
 return EntityView.new {
-	key = 'patient_histories', title = 'Medical History', navTitle = 'History', searchPlaceholder = 'Diagnosis, patient, doctor...',
+	key = 'patient_histories', title = 'Medical History', navTitle = 'Medical History', searchPlaceholder = 'Diagnosis, patient, doctor...',
 	fields = {
 		{ key = 'patient_id', label = 'Patient', relation = 'patients' },
 		{ key = 'diagnosis', label = 'Diagnosis' },

@@ -13,6 +13,16 @@ docker compose up -d db
 docker compose run --rm app
 ```
 
+After changing Mate itself under `mate/src/`, rebuild the app image so its
+generated `dist/out.lua` bundle is refreshed:
+
+```
+docker compose run --build --rm app
+```
+
+Regular changes under `src/` do not need an image rebuild because that folder
+is mounted into the app container by Compose.
+
 ## TUI architecture
 
 - `src/application.lua` is the Mate composition root.

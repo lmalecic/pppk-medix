@@ -30,7 +30,7 @@ return function()
     sattr = nil,
     border_enabled = false,
     border_color = nil,
-    border_chars = { v = '│', h = '─', tl = '┌', tr = '┐', bl = '└', br = '┘' }
+    border_chars = { v = '│', h = '─', tl = '╭', tr = '╮', bl = '╰', br = '╯' }
   }
 
   local self = {}

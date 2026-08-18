@@ -5,7 +5,7 @@ AppointmentRepository.__index = AppointmentRepository
 setmetatable(AppointmentRepository, { __index = BaseRepository })
 
 function AppointmentRepository.new()
-	return setmetatable(BaseRepository.new('appointments'), AppointmentRepository)
+    return setmetatable(BaseRepository.new('appointments'), AppointmentRepository)
 end
 
 function AppointmentRepository:list(scope)

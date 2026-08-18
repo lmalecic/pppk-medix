@@ -1,6 +1,7 @@
 local LineInput = require 'mate.components.line_input'
 local Fieldset = require 'components.fieldset'
 local Window = require 'components.window'
+local Style = require 'components.style'
 
 local EntityScreen = {}
 EntityScreen.__index = EntityScreen
@@ -11,12 +12,11 @@ end
 
 local function selected_prefix(buf, selected)
 	if selected then
-		buf:set_fg('#f5d76e')
-		buf:set_attr('bold')
-		buf:write('> ')
+		buf:set_fg(Style.colors.selected_cursor)
+		buf:set_attr(Style.attributes.strong)
+		buf:write(Style.symbols.selection)
 	else
-		buf:set_fg('#6f7f96')
-		buf:write('  ')
+		buf:set_fg(Style.colors.muted)
 	end
 	buf:set_fg(nil)
 	buf:set_attr(nil)
@@ -31,7 +31,7 @@ local function highlighted(buf, text, query)
 		local first, last = lower:find(needle, pos, true)
 		if not first then buf:write(text:sub(pos)); break end
 		if first > pos then buf:write(text:sub(pos, first - 1)) end
-		buf:set_fg('#c08080'); buf:set_attr('bold')
+		buf:set_fg(Style.colors.error); buf:set_attr(Style.attributes.strong)
 		buf:write(text:sub(first, last))
 		buf:set_fg(nil); buf:set_attr(nil)
 		pos = last + 1
@@ -39,7 +39,7 @@ local function highlighted(buf, text, query)
 end
 
 local function draw_search(state, buf)
-	buf:set_fg('#303640'); buf:set_attr('bold'); buf:write('> ')
+	buf:set_fg(Style.colors.border); buf:set_attr(Style.attributes.strong); buf:write(Style.symbols.selection)
 	buf:set_fg(nil); buf:set_attr(nil)
 	LineInput.view(state.searchInput, buf)
 end
@@ -47,7 +47,7 @@ end
 local function draw_list(controller, state, buf, height)
 	local count = controller:rowCount(state)
 	if count == 0 then
-		buf:set_fg('#c08080'); buf:set_attr('italic')
+		buf:set_fg(Style.colors.error); buf:set_attr(Style.attributes.emphasis)
 		buf:write('No records found.')
 		buf:set_fg(nil); buf:set_attr(nil)
 		return
@@ -60,7 +60,7 @@ local function draw_list(controller, state, buf, height)
 		local item = controller:rowAt(state, index)
 		if item then
 			selected_prefix(buf, index == state.selected)
-			if item.create then
+			if rawget(item, 'create') then
 				buf:write('+ Create new ' .. controller.view.title:lower())
 			else
 				highlighted(buf, controller.view:summary(item), state.filter)
@@ -76,12 +76,14 @@ local function draw_fields(controller, state, entity, buf)
 	for index, field in ipairs(controller.view.fields) do
 		local selected = editing and state.editIndex == index
 		selected_prefix(buf, selected)
-		buf:set_fg('#8aa2c1'); buf:write(field.label .. ': '); buf:set_fg(nil)
+		local labelColor = editing and not selected and Style.colors.secondary_text or Style.colors.accent
+		buf:set_fg(labelColor); buf:set_attr(Style.attributes.strong); buf:write(field.label .. ': ')
+		buf:set_fg(nil); buf:set_attr(nil)
 		buf:write(controller.view:fieldValue(source, field))
 		if state.lockedValues[field.key] ~= nil then
-			buf:set_fg('#6f7f96'); buf:write('  (fixed)'); buf:set_fg(nil)
+			buf:set_fg(Style.colors.muted); buf:write('  (fixed)'); buf:set_fg(nil)
 		elseif selected and field.relation then
-			buf:set_fg('#6f7f96'); buf:write('  ENTER select'); buf:set_fg(nil)
+			buf:set_fg(Style.colors.muted); buf:write('  ENTER select'); buf:set_fg(nil)
 		end
 		buf:write('\n')
 	end
@@ -95,7 +97,7 @@ local function draw_actions(controller, state, buf)
 		buf:write('\n')
 	end
 	buf:write('\n')
-	buf:set_fg('#6f7f96')
+	buf:set_fg(Style.colors.muted)
 	buf:write(state.mode == 'actions' and 'UP/DOWN select, ENTER confirm, ESC back' or 'ENTER for actions')
 	buf:set_fg(nil)
 end
@@ -109,13 +111,13 @@ local function draw_editor_actions(controller, state, buf)
 		if index < #labels then buf:write('\n') end
 	end
 	buf:write('\n\n')
-	buf:set_fg('#6f7f96'); buf:write('UP/DOWN select, ENTER change, ESC cancel'); buf:set_fg(nil)
+	buf:set_fg(Style.colors.muted); buf:write('UP/DOWN select, ENTER change, ESC cancel'); buf:set_fg(nil)
 end
 
 local function draw_details(controller, state, buf)
 	local entity = controller:current(state)
 	if not entity and state.mode ~= 'create' then
-		buf:set_fg('#8aa2c1'); buf:write('Select a record to view its details.'); buf:set_fg(nil)
+		buf:set_fg(Style.colors.accent); buf:write('Select a record to view its details.'); buf:set_fg(nil)
 		return
 	end
 	draw_fields(controller, state, entity, buf)
@@ -124,7 +126,7 @@ local function draw_details(controller, state, buf)
 		draw_editor_actions(controller, state, buf)
 		return
 	end
-	for _, line in ipairs(controller.view:detailLines(entity)) do buf:write(line .. '\n') end
+	for _, line in ipairs(controller.view:detailLines(entity)) do buf:write("\n" .. line .. '\n') end
 	buf:write('\n')
 	draw_actions(controller, state, buf)
 end
@@ -134,7 +136,7 @@ local function draw_relation_modal(controller, state, buf, layout)
 	buf:with_offset(layout.modal.x, layout.modal.y, function()
 		Window.title(layout.modal.window, 'Select ' .. state.modal.targetView.title)
 		Window.draw(layout.modal.window, buf, layout.modal.resolved, function(_, height)
-			buf:set_fg('#303640'); buf:set_attr('bold'); buf:write('> ')
+			buf:set_fg(Style.colors.border); buf:set_attr(Style.attributes.strong); buf:write(Style.symbols.selection)
 			buf:set_fg(nil); buf:set_attr(nil)
 			LineInput.view(state.relationInput, buf)
 			buf:write('\n\n')
@@ -159,11 +161,11 @@ local function draw_value_modal(state, buf, layout)
 	buf:with_offset(layout.input.x, layout.input.y, function()
 		Window.title(layout.input.window, state.modal.field.label)
 		Window.draw(layout.input.window, buf, layout.input.resolved, function(width)
-			buf:set_fg('#303640'); buf:set_attr('bold'); buf:write('> ')
+			buf:set_fg(Style.colors.border); buf:set_attr(Style.attributes.strong); buf:write(Style.symbols.selection)
 			buf:set_fg(nil); buf:set_attr(nil)
 			LineInput.view(state.valueInput, buf)
 			buf:write('\n')
-			buf:set_fg('#6f7f96'); buf:write('ENTER confirm, ESC cancel'); buf:set_fg(nil)
+			buf:set_fg(Style.colors.muted); buf:write('ENTER confirm, ESC cancel'); buf:set_fg(nil)
 		end)
 	end)
 end
@@ -182,8 +184,8 @@ function EntityScreen:view(controller, state, buf, layout, overlay)
 					end)
 				end)
 				buf:with_offset(leftWidth, 0, function()
-					buf:set_fg('#303640')
-					for row = 0, height - 1 do buf:move_to(0, row); buf:write('│') end
+					buf:set_fg(Style.colors.border)
+					for row = 0, height - 1 do buf:move_to(0, row); buf:write(Style.symbols.verticalDivider) end
 					buf:set_fg(nil)
 				end)
 				buf:with_offset(leftWidth + 2, 0, function()
